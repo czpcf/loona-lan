@@ -1,5 +1,6 @@
 from typing import Tuple
 
+from .inherit import Inherit
 from .pallete import Pallete
 from .property import Property
 
@@ -17,6 +18,14 @@ class Morpheme():
         self.color = self.__class__.info[type][1]
         self.properties: list[Property] = []
 
+    def __eq__(self, other):
+        if isinstance(other, Morpheme):
+            return self.type == other.type and self.abbr == other.abbr and self.properties == other.properties
+        return False
+
+    def __hash__(self):
+        return hash((self.type, self.abbr, self.properties))
+    
     def format(self, **kwargs) -> str:
         use_color: bool = kwargs.get('use_color', True)
         show_property: bool = kwargs.get('show_property', True)
@@ -24,24 +33,34 @@ class Morpheme():
         c = self.color if use_color else 'none'
         s = self.abbr if use_abbr else self.type
         res = Pallete.color(s, c)
-        if show_property and len(self.properties) != 0:
+        inherit_source: list[Property] = kwargs.get('inherit_source', [])
+        inherit_to: list[Property] = kwargs.get('inherit_to', [])
+        if show_property and len(self.properties) + len(inherit_source) + len(inherit_to) != 0:
+            a = [
+                ','.join([p.format(use_color=use_color, use_abbr=use_abbr) for p in self.properties]),
+                ','.join([Pallete.color('+', 'none') + p.format(use_color=use_color, use_abbr=use_abbr) for p in inherit_source]),
+                ','.join([Pallete.color('-', 'none') + p.format(use_color=use_color, use_abbr=use_abbr) for p in inherit_to]),
+            ]
+            a = [x for x in a if x]
             res += (
                 Pallete.color('(', 'none') +
-                '|'.join([p.format(use_color=use_color, use_abbr=use_abbr) for p in self.properties]) +
+                ','.join(a) +
                 Pallete.color(')', 'none')
             )
+            
         return res
 
     @classmethod
-    def parse(cls, s: str) -> 'Morpheme':
+    def parse(cls, s: str) -> Tuple['Morpheme', list[str]]:
         s = s.strip()
         first_p = s.find('(')
         if first_p != -1:
             m = Morpheme(s[:first_p])
-            m.properties = Property.parse(s[first_p+1:-1])
+            m.properties, p = Property.parse(s[first_p+1:-1])
         else:
             m = Morpheme(s)
-        return m
+            p = []
+        return m, p
     
     @classmethod
     def get_abbr(cls, type: str) -> str:

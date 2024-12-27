@@ -14,6 +14,14 @@ class Property():
         self.type = type
         self.abbr = self.__class__.info[type][0]
         self.color = self.__class__.info[type][1]
+    
+    def __eq__(self, other):
+        if isinstance(other, Property):
+            return self.type == other.type and self.abbr == other.abbr
+        return False
+
+    def __hash__(self):
+        return hash((self.type, self.abbr))
 
     def format(self, **kwargs) -> str:
         use_color: bool = kwargs.get('use_color', True)
@@ -24,12 +32,16 @@ class Property():
         return s
 
     @classmethod
-    def parse(cls, s: str) -> list['Property']:
-        properties = s.strip().removeprefix('(').removesuffix(')').split('|')
+    def parse(cls, s: str) -> Tuple[list['Property'], list[str]]:
+        all = s.strip().removeprefix('(').removesuffix(')').split(',')
+        properties = all[0].split(',')
+        # inherit
+        if properties[0].startswith('+') or properties[0].startswith('-'):
+            return [], all
         res = []
         for p in properties:
             res.append(Property(p))
-        return res
+        return res, all[1:]
 
     @classmethod
     def get_abbr(cls, type: str) -> str:
