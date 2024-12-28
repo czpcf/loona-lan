@@ -1,6 +1,7 @@
+from .id import ID, IDTable
 from .morpheme import Morpheme
+from .pallete import Pallete
 from .property import Property
 from .rule import Rule
-from .pallete import Pallete
 
-__all__ = [Morpheme, Property, Rule, Pallete]
+__all__ = [Morpheme, Property, Rule, Pallete, ID, IDTable]

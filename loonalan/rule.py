@@ -1,5 +1,6 @@
 from collections import defaultdict
 from typing import Tuple
+import math
 
 from .inherit import Inherit
 from .morpheme import Morpheme
@@ -13,6 +14,19 @@ class Rule():
         self.source = source
         self.to = to
         self.inherit = inherit
+    
+    @classmethod
+    def find(cls, m: Morpheme) -> list['Rule']:
+        found = []
+        for rule in cls.rules:
+            if m.type == rule.source.type:
+                found.append(rule)
+        return found
+    
+    def pushdown(self, morpheme: Morpheme) -> Tuple[list[Morpheme], list[Inherit]]:
+        if morpheme.type != self.source.type:
+            raise RuntimeError(f"type do not match, expect {self.source.type}")
+        return self.to, self.inherit
     
     def format(self, **kwargs) -> str:
         show_inherit = kwargs.get('show_inherit', True)
@@ -29,7 +43,7 @@ class Rule():
         return res
 
     @classmethod
-    def register(cls, rule: str):
+    def parse(cls, rule: str):
         m = rule.strip().split(' ')
         inherit_source = {}
         inherit_to = defaultdict(list[int])
@@ -65,7 +79,11 @@ class Rule():
             for x in inherit_to[p]:
                 p_to.append(x)
             inherit.append(Inherit(source=inherit_source[p], to=p_to, property=p))
-        cls.rules.append(Rule(source=source, to=to, inherit=inherit))
+        return Rule(source=source, to=to, inherit=inherit)
+
+    @classmethod
+    def register(cls, rule: str):
+        cls.rules.append(cls.parse(rule=rule))
     
     @classmethod
     def get_rules(cls) -> list['Rule']:
@@ -73,6 +91,16 @@ class Rule():
     
     @classmethod
     def format_rules(cls, **kwargs) -> str:
+        use_index = kwargs.get('use_index', False)
+        
         rules = cls.rules
-        res = '\n'.join([r.format(**kwargs) for r in rules])
+        max_len = int(math.log10(len(rules) - 1))   # start from 0
+        a = []
+        for (i, r) in enumerate(rules):
+            s = r.format(**kwargs)
+            if use_index:
+                bias = max_len - int(math.log10(max(1, i)))
+                s = ' '*bias + str(i) + ": " + s
+            a.append(s)
+        res = '\n'.join(a)
         return res

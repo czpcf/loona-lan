@@ -1,3 +1,5 @@
+import regex as re
+
 class Pallete:
     """ ANSI color codes """
     BLACK = "\033[0;30m"
@@ -52,6 +54,12 @@ class Pallete:
             del kernel32
 
     @classmethod
-    def color(cls, s: str, color: str):
+    def color(cls, s: str, color: str) -> str:
         c = cls.color_map.get(color.lower(), cls.END)
         return f"{c}{s}{cls.END}"
+    
+    @classmethod
+    def remove_color(cls, s: str) -> str:
+        # Regex to match ANSI escape sequences
+        ansi_escape = re.compile(r'\033\[[0-9;]*[a-zA-Z]')
+        return ansi_escape.sub('', s)
