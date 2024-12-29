@@ -34,7 +34,8 @@ class Rule():
         inherit_to = defaultdict(list[Property])
         if show_inherit:
             for i in self.inherit:
-                inherit_source[i.source].append(i.property)
+                for x in i.source:
+                    inherit_source[x].append(i.property)
                 for to in i.to:
                     inherit_to[to].append(i.property)
         res = self.source.format(**kwargs, inherit_source=inherit_source[0], inherit_to=inherit_to[0])
@@ -45,16 +46,14 @@ class Rule():
     @classmethod
     def parse(cls, rule: str):
         m = rule.strip().split(' ')
-        inherit_source = {}
+        inherit_source = defaultdict(list[int])
         inherit_to = defaultdict(list[int])
         
         def push(p: list[str], id: int):
             for x in p:
                 if x.startswith('+'):
                     y = Property(x[1:])
-                    if inherit_source.get(y) is not None:
-                        raise RuntimeError(f"multipe inherit source {y.type}({y.abbr}) found")
-                    inherit_source[y] = id
+                    inherit_source[y].append(id)
                 elif x.startswith('-'):
                     y = Property(x[1:])
                     inherit_to[y].append(id)
@@ -76,7 +75,11 @@ class Rule():
         inherit = []
         for p in inherit_source:
             p_to = []
+            if len(inherit_to[p]) > 1 and len(inherit_source[p]) > 1:
+                raise ValueError(f"there should be either one source or one end")
             for x in inherit_to[p]:
+                if x in inherit_source[p]:
+                    raise ValueError(f"loop found")
                 p_to.append(x)
             inherit.append(Inherit(source=inherit_source[p], to=p_to, property=p))
         return Rule(source=source, to=to, inherit=inherit)
