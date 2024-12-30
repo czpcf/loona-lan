@@ -1,5 +1,6 @@
-from typing import Tuple
+from typing import Tuple, Union
 from collections import defaultdict
+from copy import deepcopy
 
 from .inherit import Inherit
 from .morpheme import Morpheme
@@ -19,7 +20,7 @@ class ID():
     
     def pushdown(self, rule: Rule, id: int) -> Tuple['ID', list[Inherit]]:
         new_s, inherit = rule.pushdown(morpheme=self.sequence[id])
-        new_s = self.sequence[:id] + new_s + self.sequence[id+1:]
+        new_s = deepcopy(self.sequence[:id] + new_s + self.sequence[id+1:])
         return ID(sequence=new_s), inherit
 
 class InheritEdge():
@@ -55,8 +56,8 @@ class IDTable():
         for x in range(len(rule.to)):
             self.union[(layer+1, id+x)] = self.tot_parts
             self.tot_parts += 1
-        for x in range(id, len(self.last().sequence)):
-            self.union[(layer+1, x+len(rule.to))] = self.union[(layer, x)]
+        for x in range(id + 1, len(self.last().sequence)):
+            self.union[(layer+1, x+len(rule.to)-1)] = self.union[(layer, x)]
 
         for i in inherit:
             for x in i.source:
@@ -95,16 +96,18 @@ class IDTable():
         if self.last()[pos] not in vocab.trans:
             raise ValueError(f"expect vocab to have type {self.last()[pos].type}")
         self.words[pos] = vocab
-        for p in vocab.property:
+        for (m, property) in vocab.property.items():
             x = self.union[(self.layers-1, pos)]
-            if p not in self.property[x]:
-                self.property[x].append(p)
+            for p in property:
+                print("GG", p.type)
+                if p not in self.property[x]:
+                    self.property[x].append(p)
         self.backward()
     
     def build(self):
         self.fixed = True
         id = self.last()
-        self.words = [None for _ in len(id.sequence)]
+        self.words: list[Union[None, Vocab]] = [None for _ in range(len(id.sequence))]
         layer = self.layers - 1
         for (i, m) in enumerate(id.sequence):
             for p in m.properties:
@@ -131,8 +134,14 @@ class IDTable():
                     Q.append(v)
         self.topo = topo
     
-    def instantiate(self, vocab: Vocab, pos: int):
+    def instantiate(self, **kwargs) -> str:
         id = self.last()
-        if pos < 0 or len(id.sequence) <= pos:
-            raise ValueError(f"pos out of range")
-        # for p in 
+        res = []
+        layer = self.layers - 1
+        for (i, word) in enumerate(self.words):
+            if word is None:
+                res.append(id.sequence[i].format(**kwargs))
+            elif isinstance(word, Vocab):
+                property = self.property[self.union[(layer, i)]]
+                res.append(word.conjugate(morpheme=id.sequence[i], property=property))
+        return ' '.join(res)

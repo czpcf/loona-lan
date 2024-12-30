@@ -20,11 +20,11 @@ class Morpheme():
 
     def __eq__(self, other):
         if isinstance(other, Morpheme):
-            return self.type == other.type and self.abbr == other.abbr and self.properties == other.properties
+            return self.type == other.type and self.abbr == other.abbr
         return False
 
     def __hash__(self):
-        return hash((self.type, self.abbr, self.properties))
+        return hash((self.type, self.abbr))
     
     def format(self, **kwargs) -> str:
         use_color: bool = kwargs.get('use_color', True)
