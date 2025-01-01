@@ -6,6 +6,13 @@ class Property():
     info: dict[str, Tuple[str, str]] = {}
     abbr: dict[str, str] = {}
 
+    @classmethod
+    def get_list(cls) -> list['Property']:
+        res = []
+        for type in cls.info:
+            res.append(Property(type=type))
+        return res
+
     def __init__(self, type: str):
         if type not in self.__class__.info and type not in self.__class__.abbr:
             raise RuntimeError(f"type {type} not found")
@@ -38,10 +45,7 @@ class Property():
         # inherit
         if properties[0].startswith('+') or properties[0].startswith('-'):
             return [], all
-        res = []
-        for p in properties:
-            res.append(Property(p))
-        return res, all[1:]
+        raise ValueError(f"property must start with +(source) or -(to)")
 
     @classmethod
     def get_abbr(cls, type: str) -> str:

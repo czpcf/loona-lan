@@ -1,4 +1,5 @@
 from collections import defaultdict
+from copy import deepcopy
 from typing import Tuple
 import math
 
@@ -26,7 +27,7 @@ class Rule():
     def pushdown(self, morpheme: Morpheme) -> Tuple[list[Morpheme], list[Inherit]]:
         if morpheme.type != self.source.type:
             raise RuntimeError(f"type do not match, expect {self.source.type}")
-        return self.to, self.inherit
+        return deepcopy(self.to), deepcopy(self.inherit)
     
     def format(self, **kwargs) -> str:
         show_inherit = kwargs.get('show_inherit', True)

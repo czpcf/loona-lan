@@ -1,6 +1,9 @@
+from typing import Tuple
 import regex as re
 
 class Pallete:
+    dis = False
+
     """ ANSI color codes """
     BLACK = "\033[0;30m"
     RED = "\033[0;31m"
@@ -55,6 +58,8 @@ class Pallete:
 
     @classmethod
     def color(cls, s: str, color: str) -> str:
+        if cls.dis:
+            return s
         c = cls.color_map.get(color.lower(), cls.END)
         return f"{c}{s}{cls.END}"
     
@@ -63,3 +68,7 @@ class Pallete:
         # Regex to match ANSI escape sequences
         ansi_escape = re.compile(r'\033\[[0-9;]*[a-zA-Z]')
         return ansi_escape.sub('', s)
+    
+    @classmethod
+    def disable(cls):
+        cls.dis = True

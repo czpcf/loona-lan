@@ -24,20 +24,25 @@ class ID():
         return ID(sequence=new_s), inherit
 
 class InheritEdge():
-    def __init__(self, source: int, to: int, property: Property):
+    def __init__(self, source: int, to: int):
         self.source = source
         self.to = to
-        self.property = property
 
 class IDTable():
     def __init__(self, morpheme: Morpheme):
         self.ids: list[ID] = [ID(sequence=[morpheme])]
-        self.edges: list[InheritEdge] = []
         self.fixed = False
         self.property: dict[int, list[Property]] = defaultdict(list[Property])
+
+        # union for different properties
+        # a DAG with different types of edges
+        self.p_list = deepcopy(Property.get_list())
+        self.edges: dict[Property, list[InheritEdge]] = defaultdict(list[InheritEdge])
+        self.edge_out: dict[Property, dict[int, list[int]]] = {}
+        for p in self.p_list:
+            self.edge_out[p] = defaultdict(list[int])
         self.union: dict[Tuple[int, int], int] = {(0, 0): 0}
         self.tot_parts = 1
-        self.edge_out: dict[Tuple[int, Property], list[int]] = defaultdict(list[int])
     
     def format(self, **kwargs):
         return '\n'.join([i.format(**kwargs) for i in self.ids])
@@ -64,14 +69,16 @@ class IDTable():
                 for y in i.to:
                     source = self.union[(layer if x==0 else layer+1, id if x==0 else x-1+id)]
                     to = self.union[(layer if y==0 else layer+1, id if y==0 else y-1+id)]
-                    self.edges.append(InheritEdge(source=source, to=to, property=i.property))
-                    self.edge_out[(source, i.property)].append(to)
+                    self.edges[i.property].append(InheritEdge(source=source, to=to))
+                    self.edge_out[i.property][source].append(to)
         self.ids.append(new_id)
     
     def backward(self):
-        for u in self.topo:
-            for p in self.property[u]:
-                for v in self.edge_out[(u, p)]:
+        for p in self.p_list:
+            for u in self.topo[p]:
+                if p not in self.property[u]:
+                    continue
+                for v in self.edge_out[p][u]:
                     if p not in self.property[v]:
                         self.property[v].append(p)
         layer = self.layers - 1
@@ -99,7 +106,6 @@ class IDTable():
         for (m, property) in vocab.property.items():
             x = self.union[(self.layers-1, pos)]
             for p in property:
-                print("GG", p.type)
                 if p not in self.property[x]:
                     self.property[x].append(p)
         self.backward()
@@ -107,32 +113,36 @@ class IDTable():
     def build(self):
         self.fixed = True
         id = self.last()
+        self.topo: dict[Property, list[int]] = defaultdict(list[int])
         self.words: list[Union[None, Vocab]] = [None for _ in range(len(id.sequence))]
+        
         layer = self.layers - 1
         for (i, m) in enumerate(id.sequence):
             for p in m.properties:
                 self.property[self.union[(layer, i)]].append(p)
-        # build topo
-        indeg = defaultdict(int)
-        out = defaultdict(list[int])
-        for i in range(self.tot_parts):
-            indeg[i] = 0
-        for e in self.edges:
-            indeg[e.to] += 1
-            out[e.source].append(e.to)
-        topo = []
-        Q = []
-        for i in range(self.tot_parts):
-            if indeg[i] == 0:
-                Q.append(i)
-        while len(Q) != 0:
-            u = Q.pop()
-            topo.append(u)
-            for v in out[u]:
-                indeg[v] -= 1
-                if indeg[v] == 0:
-                    Q.append(v)
-        self.topo = topo
+        
+        for p in self.p_list:
+            # build topo
+            indeg = defaultdict(int)
+            out = defaultdict(list[int])
+            for i in range(self.tot_parts):
+                indeg[i] = 0
+            for e in self.edges[p]:
+                indeg[e.to] += 1
+                out[e.source].append(e.to)
+            topo = []
+            Q = []
+            for i in range(self.tot_parts):
+                if indeg[i] == 0:
+                    Q.append(i)
+            while len(Q) != 0:
+                u = Q.pop()
+                topo.append(u)
+                for v in out[u]:
+                    indeg[v] -= 1
+                    if indeg[v] == 0:
+                        Q.append(v)
+            self.topo[p] = topo
     
     def instantiate(self, **kwargs) -> str:
         id = self.last()
